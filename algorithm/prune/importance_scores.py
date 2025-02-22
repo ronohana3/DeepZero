@@ -3,7 +3,7 @@ from torch.autograd import grad
 from functools import partial
 
 from .tools import fetch_data, extract_conv2d_and_linear_weights
-from ..zoo import rge, f
+from ..zoo import rge, calculate_loss
 
 def random_importance_score(
     model
@@ -62,7 +62,7 @@ def zoo_grasp_importance_score(
 
     params = extract_conv2d_and_linear_weights(model)
     
-    f_theta = partial(f, network=model, x=x, y=y, loss_func=loss_func)
+    f_theta = partial(calculate_loss, network=model, x=x, y=y, loss_func=loss_func)
 
     g0 = rge(f_theta, params, zoo_rs_size, zoo_step_size)
     modified_params = {}

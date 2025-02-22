@@ -52,9 +52,7 @@ def cge_weight_allocate_to_process(remote_networks, network, gpus, process_per_g
         for i in range(process_per_gpu):
             idx = (j * process_per_gpu) + i
             params_to_be_perturbed[idx] = rpc.RRef(torch.Tensor(params_to_be_perturbed[idx]))
-            params_set_signal.append(remote_networks[f"{gpu}-{i}"].rpc_async().set_params_to_be_perturbed(params_to_be_perturbed[idx], param_names))
-    for pss in params_set_signal:
-        pss.wait()
+            params_set_signal.append(remote_networks[f"{gpu}-{i}"].set_params_to_be_perturbed(params_to_be_perturbed[idx], param_names))
 
 def cge_calculation(remote_networks, network, gpus, process_per_gpu, x, y, cge_step_size):
     params_dict = {
