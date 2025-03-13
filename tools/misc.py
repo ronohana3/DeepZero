@@ -5,24 +5,25 @@ import os
 
 
 def process_cli(parser):
-    parser.add_argument('--dry-run', action='store_false', dest='log')
     parser.add_argument('--seed', type=int, default=324823217)
-    parser.add_argument('--network', choices=['resnet20', 'cnn'], default='cnn')
+    parser.add_argument('--network', choices=['cnn'], default='cnn')
     parser.add_argument('--dataset', choices=['cifar10'], default='cifar10')
     parser.add_argument('--batch-size', type=int, default=256)
-    parser.add_argument('--cnn-depth', type=int, default=1)
+    parser.add_argument('--cnn-depth', type=int, default=2)
     parser.add_argument('--cnn-channel-num', type=int, default=18)
-    parser.add_argument('--method', type=str, choices=['FO', 'ZO_CGE', 'ZO_CGE_Q', 'ZO_RGE_Q'], default='ZO_CGE')
+    parser.add_argument('--method', type=str, choices=['FO', 'ZO_CGE', 'ZO_CGE_Q', 'ZO_RGE_Q'], default='ZO_CGE_Q')
     parser.add_argument('--num-bits', type=int, default=8)
     parser.add_argument('--zoo-step-size', type=float, default=5e-3)
 
     parser.add_argument('--epoch', type=int, default=50)
-    parser.add_argument('--lr', type=float, default=0.1)
+    parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--weight-decay', type=float, default=5e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--warmup-epochs', type=int, default=3)
     parser.add_argument('--nesterov', action='store_true')
     parser.add_argument('--scheduler', type=str, choices=['cosine', 'step'], default='cosine')
+
+    parser.add_argument('--log', action='store_true')
 
     return parser
 
