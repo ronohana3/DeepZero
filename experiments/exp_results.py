@@ -1,4 +1,8 @@
+import sys
 import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(project_root)
+
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,9 +12,9 @@ from data import prepare_dataset
 from cfg import results_path
 from tqdm import tqdm
 from tools import *
+import re
 
 def list_experiments(results_path):
-    """List all experiment folders inside results_path and let the user select one."""
     if not os.path.exists(results_path):
         raise FileNotFoundError(f"Results directory does not exist: {results_path}")
 
@@ -54,6 +58,31 @@ def load_tensorboard_logs(log_dir):
     return np.array(epochs), np.array(train_acc), np.array(test_acc)
 
 
+def extract_metrics(log_file_path):
+    train_acc = []
+    test_acc = []
+    train_loss = []
+    test_loss = []
+
+    # Define regex patterns to extract accuracy and loss
+    train_pattern = re.compile(r"Epoch \d+ Training: .*? Acc ([\d\.]+)% Loss ([\d\.]+)")
+    test_pattern = re.compile(r"Epoch \d+ Testing:: .*? Acc ([\d\.]+)% Loss ([\d\.]+)")
+
+    # Read log file and extract metrics
+    with open(log_file_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            train_match = train_pattern.search(line)
+            test_match = test_pattern.search(line)
+
+            if train_match:
+                train_acc.append(float(train_match.group(1)))
+                train_loss.append(float(train_match.group(2)))
+
+            if test_match:
+                test_acc.append(float(test_match.group(1)))
+                test_loss.append(float(test_match.group(2)))
+
+    return train_acc, test_acc, train_loss, test_loss
 def plot_accuracy(epochs, train_acc, test_acc, save_path):
     """Plot training and testing accuracy over epochs."""
     plt.figure(figsize=(10, 5))
@@ -67,7 +96,36 @@ def plot_accuracy(epochs, train_acc, test_acc, save_path):
     plt.savefig(os.path.join(save_path, "accuracy_plot.png"))
     plt.show()
 
+def plot_results(train_acc, test_acc, train_loss, test_loss):
+    # Generate epoch numbers
+    epochs = list(range(1, len(train_acc) + 1))
 
+    # Create plots
+    plt.figure(figsize=(12, 6))
+
+    # Train and Test Accuracy
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, train_acc, label="Train Accuracy", marker='o')
+    plt.plot(epochs, test_acc, label="Test Accuracy", marker='s')
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy (%)")
+    plt.title("Train and Test Accuracy vs Epoch")
+    plt.legend()
+    plt.grid()
+
+    # Train and Test Loss
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, train_loss, label="Train Loss", marker='o')
+    plt.plot(epochs, test_loss, label="Test Loss", marker='s')
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Train and Test Loss vs Epochs")
+    plt.legend()
+    plt.grid()
+
+    # Show plot
+    plt.tight_layout()
+    plt.show()
 def evaluate_best_model(results_folder, dataset="cifar10"):
     """Load the best model and evaluate it on the test dataset."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -110,74 +168,18 @@ def evaluate_best_model(results_folder, dataset="cifar10"):
         pbar.set_postfix_str(f"Acc {100 * acc.avg:.2f}%")
 
 
-def plot_weights(results_folder):
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Load model arguments (depth, channels)
-    args_file = os.path.join(results_folder, "args.txt")
-    if not os.path.exists(args_file):
-        raise FileNotFoundError(f"Arguments file not found: {args_file}")
-
-    args_dict = {}
-    with open(args_file, "r") as f:
-        for line in f:
-            key, value = line.strip().split(": ")
-            args_dict[key] = int(value) if value.isdigit() else value
-
-    depth = int(args_dict.get("cnn_depth", 1))
-    channel_num = int(args_dict.get("cnn_channel_num", 24))
-
-    # Initialize model
-    model = AdjustableCNN(depth=depth, channel_num=channel_num).to(device)
-
-    last_model_path = os.path.join(results_folder, "ckpt.pth")
-    if not os.path.exists(last_model_path):
-        raise FileNotFoundError(f"Last model file not found: {last_model_path}")
-
-    state_dict = torch.load(last_model_path, map_location=device)
-    model.load_state_dict(state_dict["state_dicts"]["network"])
-
-    print_weight_frequencies(model)
-
-
-def get_weight_frequencies(network):
-    freq_dict = {}
-
-    for name, param in network.named_parameters():
-        # Count occurrences of each quantized value
-        unique_values, counts = torch.unique(param.cpu().round(decimals=4), return_counts=True)
-        freq_dict[name] = dict(zip(unique_values.tolist(), counts.tolist()))
-
-    return freq_dict
-
-
-def print_weight_frequencies(network):
-    freq_dict = get_weight_frequencies(network)
-
-    print("\n==== Weight Value Frequencies per Layer ====")
-    for layer, freqs in freq_dict.items():
-        freq_str = " | ".join(f"{value:.3f}: {count}" for value, count in sorted(freqs.items()))
-        print(f"{layer}: {freq_str}")
-
-    for layer, freqs in freq_dict.items():
-        value, count = zip(*sorted(freqs.items()))
-        plt.title(layer)
-        plt.stem(value, count)
-        plt.show()
-
-
-
 if __name__ == "__main__":
-    results_folder = None  # Set to None so user selects experiment
+    results_folder = None
 
-    # If no folder is provided, ask user to select one
     if not results_folder:
         results_folder = list_experiments(results_path)
 
-    # plot_weights(results_folder)
-
     log_dir = os.path.join(results_folder, "tensorboard")
+
+    log_file_path = os.path.join(results_folder, "log.txt")
+
+    train_acc, test_acc, train_loss, test_loss = extract_metrics(log_file_path)
+    plot_results(train_acc, test_acc, train_loss, test_loss)
 
     # Load TensorBoard logs
     # epochs, train_acc, test_acc = load_tensorboard_logs(log_dir)
@@ -186,4 +188,4 @@ if __name__ == "__main__":
     # plot_accuracy(epochs, train_acc, test_acc, results_folder)
     #
     # Evaluate best model
-    evaluate_best_model(results_folder)
+    # evaluate_best_model(results_folder)
