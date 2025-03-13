@@ -119,7 +119,7 @@ def plot_results(train_acc, test_acc, train_loss, test_loss):
     plt.plot(epochs, test_loss, label="Test Loss", marker='s')
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("Train and Test Loss vs Epochs")
+    plt.title("Train and Test Loss vs Epoch")
     plt.legend()
     plt.grid()
 
@@ -127,7 +127,6 @@ def plot_results(train_acc, test_acc, train_loss, test_loss):
     plt.tight_layout()
     plt.show()
 def evaluate_best_model(results_folder, dataset="cifar10"):
-    """Load the best model and evaluate it on the test dataset."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load model arguments (depth, channels)
